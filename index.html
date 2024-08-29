@@ -1,23 +1,93 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <title>Home</title>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
-    <!--
-      Need a visual blank slate?
-      Remove all code in `styles.css`!
-    -->
-    <link rel="stylesheet" href="styles.css" />
-    <script type="module" src="script.js"></script>
-  </head>
-  <body>
-    <nav>
-      <a href="/" aria-current="page">Home</a>
-      <a href="/page2.html">Other page</a>
-    </nav>
-    <main>
-      <h1>Home page</h1>
-    </main>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <title>Student Loan Manager</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        input, button { margin: 5px; }
+        #loanSummary, #repaymentSchedule, #visualization { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Student Loan Manager</h1>
+    <section id="loanLogging">
+        <h2>Log Your Loans</h2>
+        <form id="loanForm">
+            <label>Principal: <input type="number" id="principal" required></label>
+            <label>Interest Rate (%): <input type="number" step="0.1" id="interestRate" required></label>
+            <label>Loan Term (years): <input type="number" id="loanTerm" required></label>
+            <label>Start Date: <input type="date" id="startDate" required></label>
+            <button type="submit">Add Loan</button>
+        </form>
+        <div id="loanSummary"></div>
+    </section>
+
+    <section id="repaymentSchedule">
+        <h2>Repayment Schedule</h2>
+        <div id="scheduleDisplay"></div>
+    </section>
+
+    <section id="visualization">
+        <h2>Progress Visualization</h2>
+        <div id="chart"></div>
+    </section>
+
+    <script>
+        let loans = [];
+        let chart;
+
+        document.getElementById('loanForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const principal = parseFloat(document.getElementById('principal').value);
+            const interestRate = parseFloat(document.getElementById('interestRate').value) / 100;
+            const loanTerm = parseInt(document.getElementById('loanTerm').value);
+            const startDate = document.getElementById('startDate').value;
+            loans.push({ principal, interestRate, loanTerm, startDate, paid: 0 });
+            updateLoanSummary();
+            updateRepaymentSchedule();
+            updateVisualization();
+        });
+
+        function updateLoanSummary() {
+            const summaryHTML = loans.map((loan, index) => {
+                const interestAccrued = calculateInterest(loan);
+                return `<p>Loan ${index + 1}: Principal: $${loan.principal}, Interest Accrued: $${interestAccrued}, Remaining Balance: $${loan.principal + interestAccrued - loan.paid}</p>`;
+            }).join('');
+            document.getElementById('loanSummary').innerHTML = summaryHTML;
+        }
+
+        function calculateInterest(loan) {
+            const timeElapsed = (new Date() - new Date(loan.startDate)) / (1000 * 3600 * 24 * 365);
+            return loan.principal * loan.interestRate * timeElapsed;
+        }
+
+        function updateRepaymentSchedule() {
+            const scheduleHTML = loans.map((loan) => {
+                const monthlyInterestRate = loan.interestRate / 12;
+                const monthlyPayment = loan.principal * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, loan.loanTerm * 12) / (Math.pow(1 + monthlyInterestRate, loan.loanTerm * 12) - 1);
+                return `<p>Monthly Payment for Loan: $${monthlyPayment.toFixed(2)}</p>`;
+            }).join('');
+            document.getElementById('scheduleDisplay').innerHTML = scheduleHTML;
+        }
+
+        function updateVisualization() {
+            if (chart) chart.remove();
+            const dataPoints = loans.map((loan) => {
+                return { x: new Date(loan.startDate), y: loan.principal + calculateInterest(loan) };
+            });
+            chart = new p5((sketch) => {
+                sketch.setup = () => {
+                    sketch.createCanvas(600, 300);
+                    sketch.background(255);
+                    sketch.stroke(50);
+                    for (let i = 0; i < dataPoints.length; i++) {
+                        sketch.line(i * 100, sketch.height - dataPoints[i].y / 100, (i + 1) * 100, sketch.height - dataPoints[i + 1]?.y / 100);
+                    }
+                };
+            }, 'chart');
+        }
+    </script>
+</body>
 </html>
